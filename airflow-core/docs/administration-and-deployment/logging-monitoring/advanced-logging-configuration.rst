@@ -78,23 +78,23 @@ Create a file (e.g., ``~/airflow/config/log_config.py``) with the following cont
 
    import structlog
    from airflow.config_templates.airflow_local_settings import DEFAULT_LOGGING_CONFIG
-   from copy import ``deepcopy``
+   from copy import deepcopy
 
    json_processors = [
-      structlog.processors.TimeStamper(fmt="iso"),
-      structlog.stdlib.add_log_level,
-      structlog.processors.StackInfoRenderer(),
-      structlog.processors.format_exc_info,
-      structlog.processors.UnicodeDecoder(),
-      structlog.processors.JSONRenderer(),
+       structlog.processors.TimeStamper(fmt="iso"),
+       structlog.stdlib.add_log_level,
+       structlog.processors.StackInfoRenderer(),
+       structlog.processors.format_exc_info,
+       structlog.processors.UnicodeDecoder(),
+       structlog.processors.JSONRenderer(),
    ]
 
-   LOGGING_CONFIG = ``deepcopy``(DEFAULT_LOGGING_CONFIG)
+   LOGGING_CONFIG = deepcopy(DEFAULT_LOGGING_CONFIG)
    LOGGING_CONFIG["structlog"] = {
-      "processors": json_processors,
-      "wrapper_class": structlog.stdlib.BoundLogger,
-      "logger_factory": structlog.stdlib.LoggerFactory(),
-      "cache_logger_on_first_use": True,
+       "processors": json_processors,
+       "wrapper_class": structlog.stdlib.BoundLogger,
+       "logger_factory": structlog.stdlib.LoggerFactory(),
+       "cache_logger_on_first_use": True,
    }
 
 Then in your ``airflow.cfg``:
@@ -142,8 +142,8 @@ Example of custom logger name:
       SQLExecuteQueryOperator(..., logger_name="sql.big_query")
 
 
-            # In your custom `log_config.py` (Airflow 2.x and earlier only)
-            # For Airflow 3.x+, use ``structlog`` as shown above.
+            # In your custom log_config.py (Airflow 2.x and earlier only)
+            # For Airflow 3.x+, use structlog as shown above.
 
 If you want to limit the log size of the tasks, you can add the handlers.task.max_bytes parameter.
 
@@ -152,5 +152,5 @@ Example of limiting the size of tasks:
     .. code-block:: python
 
 
-            # In your custom `log_config.py` (Airflow 2.x and earlier only)
-            # For Airflow 3.x+, use ``structlog`` as shown above.
+         # In your custom log_config.py (Airflow 2.x and earlier only)
+         # For Airflow 3.x+, use structlog as shown above.
