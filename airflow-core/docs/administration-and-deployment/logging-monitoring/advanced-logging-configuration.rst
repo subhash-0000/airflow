@@ -136,21 +136,20 @@ are using the same Operator, but you want to disable logging for some of them.
 
 Example of custom logger name:
 
-    .. code-block:: python
+.. code-block:: python
 
-      # In your Dag file
-      SQLExecuteQueryOperator(..., logger_name="sql.big_query")
+   # In your Dag file
+   SQLExecuteQueryOperator(..., logger_name="sql.big_query")
 
-
-            # In your custom log_config.py (Airflow 2.x and earlier only)
-            # For Airflow 3.x+, use structlog as shown above.
+.. note::
+   In your custom log_config.py (Airflow 2.x and earlier only)
+   For Airflow 3.x+, use structlog as shown above.
 
 If you want to limit the log size of the tasks, you can add the handlers.task.max_bytes parameter.
 
 Example of limiting the size of tasks:
 
-    .. code-block:: python
+.. code-block:: python
 
-
-         # In your custom log_config.py (Airflow 2.x and earlier only)
-         # For Airflow 3.x+, use structlog as shown above.
+   # In your custom log_config.py (Airflow 2.x and earlier only)
+   # For Airflow 3.x+, use structlog as shown above.
