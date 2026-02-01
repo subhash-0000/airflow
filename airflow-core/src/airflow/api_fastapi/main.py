@@ -25,18 +25,21 @@ os.environ["_AIRFLOW_PROCESS_CONTEXT"] = "server"
 
 # Defensive: Disable uvloop if PYTHONASYNCIODEBUG=1 is set (see Airflow issue #61214)
 if os.environ.get("PYTHONASYNCIODEBUG") == "1":
-	import warnings
-	warnings.warn(
-		"PYTHONASYNCIODEBUG=1 detected: uvloop is not compatible with asyncio debug mode on Python 3.13+. "
-		"Falling back to default asyncio event loop.",
-		RuntimeWarning,
-	)
+    import warnings
+
+    warnings.warn(
+        "PYTHONASYNCIODEBUG=1 detected: uvloop is not compatible with asyncio debug mode on Python 3.13+. "
+        "Falling back to default asyncio event loop.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 else:
-	try:
-		import uvloop
-		uvloop.install()
-	except ImportError:
-		pass
+    try:
+        import uvloop
+
+        uvloop.install()
+    except ImportError:
+        pass
 
 from airflow.api_fastapi.app import cached_app
 
