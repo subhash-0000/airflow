@@ -939,13 +939,13 @@ repos:
         require_serial: true
         pass_filenames: false
       - id: extract-agent-skills
-        name: Extract agent skills from SKILL.md
-        description: Extract agent skill definitions from SKILL.md markers and write skills.json
+        name: Extract agent skills from contributing-docs
+        description: Extract agent skill definitions from contributing-docs/*.rst and write skills.json
         entry: ./scripts/ci/prek/extract_agent_skills.py --check
         language: python
         files: >
           (?x)
-          ^\.github/skills/breeze-contribution/SKILL\.md$|
+          ^contributing-docs/.*\.rst$|
           ^\.github/skills/breeze-contribution/skills\.json$|
           ^scripts/ci/prek/extract_agent_skills\.py$
         require_serial: true
