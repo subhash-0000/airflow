@@ -158,6 +158,11 @@ When you install auto-completion, you can also use the tab-completion to see the
 Using prek
 ----------
 
+.. agent-skill:: static-checks
+   :host: prek run --from-ref main --stage pre-commit
+   :breeze: prek run --from-ref main --stage pre-commit
+   :fallback_condition: never
+
 After installation, prek hooks are run automatically when you commit the
 code or push it to the repository (depending on stages configured for the hooks). Some of the
 hooks are configured to run on "manual" stage only and are not run automatically.

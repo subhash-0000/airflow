@@ -524,6 +524,11 @@ see in CI in your local environment.
 Using Breeze
 ------------
 
+.. agent-skill:: system-verify
+   :host: breeze start-airflow
+   :breeze: airflow info
+   :fallback_condition: never
+
 1. Starting the Breeze environment using ``breeze start-airflow`` starts the Breeze environment with last configuration run(
    In this case Python version and backend are picked up from last execution ``breeze --python 3.10 --backend postgres``)
    It also automatically starts the API server (FastAPI api and UI), triggerer, dag processor and scheduler. It drops you in tmux with triggerer to the right, and
@@ -737,10 +742,15 @@ Installing Airflow in the local venv
 Running tests with Breeze
 -------------------------
 
+.. agent-skill:: run-tests
+   :host: uv run --project {dist} pytest {path} -xvs
+   :breeze: pytest {path} -xvs
+   :fallback_condition: missing_system_deps
+
 You can usually conveniently run tests in your IDE (see IDE below) using virtualenv but with Breeze you
 can be sure that all the tests are run in the same environment as tests in CI.
 
-All Tests are inside ./tests directory.
+All tests are inside ./tests directory.
 
 - Running Unit tests inside Breeze environment.
 

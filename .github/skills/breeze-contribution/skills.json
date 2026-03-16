@@ -1,0 +1,28 @@
+{
+  "$schema": "breeze-agent-skills/v1",
+  "source": "contributing-docs/*.rst",
+  "description": "Auto-generated from .. agent-skill:: directives in contributing-docs/*.rst. Do not edit manually — update the RST files instead.",
+  "skills": [
+    {
+      "workflow": "system-verify",
+      "host": "breeze start-airflow",
+      "breeze": "airflow info",
+      "fallback_condition": "never",
+      "source_file": "contributing-docs\\03_contributors_quick_start.rst"
+    },
+    {
+      "workflow": "run-tests",
+      "host": "uv run --project {dist} pytest {path} -xvs",
+      "breeze": "pytest {path} -xvs",
+      "fallback_condition": "missing_system_deps",
+      "source_file": "contributing-docs\\03_contributors_quick_start.rst"
+    },
+    {
+      "workflow": "static-checks",
+      "host": "prek run --from-ref main --stage pre-commit",
+      "breeze": "prek run --from-ref main --stage pre-commit",
+      "fallback_condition": "never",
+      "source_file": "contributing-docs\\08_static_code_checks.rst"
+    }
+  ]
+}
