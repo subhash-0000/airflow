@@ -1,7 +1,7 @@
 # DX_REPORT.md: Agent Skills Failure Mode Analysis
 
-**Date:** March 15, 2026
-**Author:** GSoC 2026 Applicant
+**Date:** March 18, 2026 (Updated)  
+**Author:** Subhash (GSoC 2026 Applicant)  
 **Issue:** #62500 — "Airflow Contribution & Verification Agent Skills"
 
 ---
@@ -9,6 +9,29 @@
 ## Overview
 
 This report documents the practical difference between an AI agent contributing to Airflow **with** and **without** Agent Skills.
+
+**UPDATE (March 18):** Added intelligent 3-tier fallback implementation — the ONLY PoC with error-driven command selection as explicitly requested by @potiuk.
+
+---
+
+## Key Differentiator: Error-Driven Fallback
+
+### What Mentors Asked For
+
+> "NOT EVERYTHING should be done with breeze... In vast majority of cases
+> `uv run --project distribution_folder pytest` is enough. Only when this
+> fails because some system dependency is missing should we fall back to breeze."
+> — @potiuk, Issue #62500
+
+### What We Built
+
+| Competitor Approach | Our Approach |
+|---------------------|--------------|
+| Context-driven: `if inside_breeze → breeze_cmd` | **Error-driven**: Try native, fallback on system dep errors |
+| Always uses Breeze in container | **Prefers native** (faster, IDE-debuggable) |
+| Binary decision (host vs container) | **3-tier chain**: NATIVE → BREEZE → SYSTEM |
+
+---
 
 ## Test Scenario
 
@@ -35,10 +58,17 @@ pytest providers/apache/kafka/tests/ -xvs
 ```bash
 uv run --project providers/apache/kafka pytest providers/apache/kafka/tests/ -xvs
 # Or if system deps missing:
-breeze exec -- pytest providers/apache/kafka/tests/ -xvs
+breeze run pytest providers/apache/kafka/tests/ -xvs
 ```
 
 **Root cause:** No `:context:` field to tell agent where command runs.
+
+**Our Solution:** `breeze_context_detect.py` provides callable API:
+```python
+from breeze_context_detect import get_command
+result = get_command("run-tests", test_path="tests/test.py")
+# Returns: {"tier": "native", "command": "uv run ...", "reason": "..."}
+```
 
 ---
 
@@ -60,6 +90,13 @@ prek run --from-ref main --stage pre-commit
 
 **Root cause:** No structured skill encoding the exact prek command with correct flags.
 
+**Our Solution:** `intelligent_fallback.py` encodes exact commands:
+```python
+def _build_native_command(workflow):
+    if workflow == "static-checks":
+        return "prek run --from-ref main --stage pre-commit"
+```
+
 ---
 
 ### Failure 3: Unclear Execution Order
@@ -72,6 +109,11 @@ prek run --from-ref main --stage pre-commit
 **Result:** Agent suggests commands in wrong order, contributor gets confusing errors.
 
 **Root cause:** No `prereqs` field in skill definitions.
+
+**Our Solution:** Tier-based decision chain enforces order:
+```
+NATIVE (try first) → BREEZE (fallback) → SYSTEM (last resort)
+```
 
 ---
 
@@ -87,13 +129,21 @@ uv run --project airflow-core pytest tests/unit/test_foo.py -xvs
 
 **Correct behavior:**
 ```bash
-# Step 1: Try local
+# Step 1: Try native (faster)
 uv run --project airflow-core pytest tests/unit/test_foo.py -xvs
-# Step 2: On ModuleNotFoundError, fall back to Breeze
-breeze exec -- pytest tests/unit/test_foo.py -xvs
+# Step 2: On system dep error, fallback to Breeze
+if "libpq.so not found" in error:
+    breeze run pytest tests/unit/test_foo.py -xvs
 ```
 
 **Root cause:** No `fallback_condition` field specifying when to switch.
+
+**Our Solution:** `should_fallback_to_breeze()` analyzes errors:
+```python
+def should_fallback_to_breeze(error_output: str) -> bool:
+    patterns = ["mysql", "libpq", "postgresql", ".so not found", ...]
+    return any(p in error_output.lower() for p in patterns)
+```
 
 ---
 

@@ -133,6 +133,33 @@ def extract_all_skills() -> list[dict[str, str]]:
 
 def build_skills_json(skills: list[dict[str, str]]) -> dict:
     """Build the full skills.json structure from extracted skill dicts."""
+    # Define fallback patterns for error-driven decision making
+    # These patterns are used by intelligent_fallback.py to detect system dependency errors
+    fallback_patterns = [
+        "mysqlclient requires MySQL C libraries",
+        "mysql_config not found",
+        "libmysqlclient",
+        "libpq.so not found",
+        "libpq.dylib not found",
+        "postgresql",
+        "psycopg2",
+        "system dependency",
+        "shared library",
+        ".so not found",
+        ".dylib not found",
+        "DLL load failed",
+        "npm not found",
+        "node not found",
+    ]
+
+    # Define tier mapping based on workflow type
+    tier_mapping = {
+        "static-checks": ("native", "prek runs on host natively (no Docker needed)"),
+        "run-tests": ("native", "Native execution preferred for speed and IDE debugging"),
+        "system-verify": ("system", "System-level verification requires full Airflow stack"),
+        "create-pr-description": ("native", "Git operations run on host natively"),
+    }
+
     return {
         "$schema": "breeze-agent-skills/v1",
         "source": "contributing-docs/*.rst",
@@ -140,12 +167,15 @@ def build_skills_json(skills: list[dict[str, str]]) -> dict:
             "Auto-generated from .. agent-skill:: directives in contributing-docs/*.rst. "
             "Do not edit manually — update the RST files instead."
         ),
+        "fallback_patterns": fallback_patterns,
         "skills": [
             {
                 "workflow": s["workflow"],
                 "host": s.get("host", ""),
                 "breeze": s.get("breeze", ""),
                 "fallback_condition": s.get("fallback_condition", s.get("fallback", "never")),
+                "tier": s.get("tier", tier_mapping.get(s["workflow"], ("native", "default"))[0]),
+                "tier_reason": s.get("tier_reason", tier_mapping.get(s["workflow"], ("native", "default"))[1]),
                 "source_file": s.get("source_file", ""),
             }
             for s in skills

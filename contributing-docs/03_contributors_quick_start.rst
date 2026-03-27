@@ -909,6 +909,34 @@ setup local machine for development.
 * `GitHub Codespaces <quick-start-ide/contributors_quick_start_codespaces.rst>`_
 
 
+Generating PR Description
+#########################
+
+.. agent-skill:: create-pr-description
+   :host: git status + git diff --stat
+   :breeze: git status + git diff --stat
+   :fallback_condition: never
+   :output: markdown PR template
+
+After making your changes and running verification workflows, generate a PR description:
+
+- Use git status and git diff to summarize changes:
+
+.. code-block:: bash
+
+   git status --short
+   git diff --stat
+
+- The agent skills system can auto-generate a PR description including:
+
+  * List of modified files
+  * Diff statistics
+  * Verification results from agent workflows
+  * Standard Airflow PR checklist
+
+This ensures consistent, complete PR descriptions that help reviewers understand your changes quickly.
+
+
 ----------------
 
 Once you have your environment set up, you can start contributing to Airflow. You can find more

@@ -2,12 +2,30 @@
   "$schema": "breeze-agent-skills/v1",
   "source": "contributing-docs/*.rst",
   "description": "Auto-generated from .. agent-skill:: directives in contributing-docs/*.rst. Do not edit manually — update the RST files instead.",
+  "fallback_patterns": [
+    "mysqlclient requires MySQL C libraries",
+    "mysql_config not found",
+    "libmysqlclient",
+    "libpq.so not found",
+    "libpq.dylib not found",
+    "postgresql",
+    "psycopg2",
+    "system dependency",
+    "shared library",
+    ".so not found",
+    ".dylib not found",
+    "DLL load failed",
+    "npm not found",
+    "node not found"
+  ],
   "skills": [
     {
       "workflow": "system-verify",
       "host": "breeze start-airflow",
       "breeze": "airflow info",
       "fallback_condition": "never",
+      "tier": "system",
+      "tier_reason": "System-level verification requires full Airflow stack",
       "source_file": "contributing-docs\\03_contributors_quick_start.rst"
     },
     {
@@ -15,6 +33,17 @@
       "host": "uv run --project {dist} pytest {path} -xvs",
       "breeze": "pytest {path} -xvs",
       "fallback_condition": "missing_system_deps",
+      "tier": "native",
+      "tier_reason": "Native execution preferred for speed and IDE debugging",
+      "source_file": "contributing-docs\\03_contributors_quick_start.rst"
+    },
+    {
+      "workflow": "create-pr-description",
+      "host": "git status + git diff --stat",
+      "breeze": "git status + git diff --stat",
+      "fallback_condition": "never",
+      "tier": "native",
+      "tier_reason": "Git operations run on host natively",
       "source_file": "contributing-docs\\03_contributors_quick_start.rst"
     },
     {
@@ -22,6 +51,8 @@
       "host": "prek run --from-ref main --stage pre-commit",
       "breeze": "prek run --from-ref main --stage pre-commit",
       "fallback_condition": "never",
+      "tier": "native",
+      "tier_reason": "prek runs on host natively (no Docker needed)",
       "source_file": "contributing-docs\\08_static_code_checks.rst"
     }
   ]
