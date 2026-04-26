@@ -52,6 +52,125 @@ CONTRIBUTING_DOCS_DIR = Path("contributing-docs")
 SKILLS_JSON = Path(".github/skills/breeze-contribution/skills.json")
 
 
+# ============================================================================
+# Custom Exception Classes
+# ============================================================================
+
+
+class SkillValidationError(Exception):
+    """Raised when a skill fails validation."""
+
+    pass
+
+
+class SkillDuplicateError(Exception):
+    """Raised when a skill ID is duplicated."""
+
+    pass
+
+
+# ============================================================================
+# Schema Validation
+# ============================================================================
+
+REQUIRED_SKILL_FIELDS = {"workflow", "host", "breeze"}
+OPTIONAL_SKILL_FIELDS = {"fallback_condition", "tier", "tier_reason", "source_file", "reference"}
+
+
+def validate_skill(skill: dict, skill_idx: int) -> None:
+    """
+    Validate a single skill dict against the schema.
+
+    Args:
+        skill: The skill dict to validate
+        skill_idx: Index of the skill in the list (for error reporting)
+
+    Raises:
+        SkillValidationError: If skill is invalid
+    """
+    # Check required fields
+    for field in REQUIRED_SKILL_FIELDS:
+        if field not in skill or not skill[field]:
+            raise SkillValidationError(
+                f"Skill {skill_idx}: Missing required field '{field}' in skill {skill.get('workflow', '???')}"
+            )
+
+    # Check field types
+    if not isinstance(skill["host"], str):
+        raise SkillValidationError(
+            f"Skill {skill_idx} ({skill['workflow']}): 'host' must be a string, got {type(skill['host']).__name__}"
+        )
+
+    if not isinstance(skill["breeze"], str):
+        raise SkillValidationError(
+            f"Skill {skill_idx} ({skill['workflow']}): 'breeze' must be a string, got {type(skill['breeze']).__name__}"
+        )
+
+    # Warn if commands are suspiciously similar (might indicate a copy-paste error)
+    if skill["host"].strip() == skill["breeze"].strip():
+        print(
+            f"WARNING: Skill {skill_idx} ({skill['workflow']}): host and breeze commands are identical. "
+            "This might indicate a copy-paste error.",
+            file=sys.stderr,
+        )
+
+
+def validate_skill_uniqueness(skills: list[dict]) -> None:
+    """
+    Check for duplicate skill IDs.
+
+    Args:
+        skills: List of skill dicts
+
+    Raises:
+        SkillDuplicateError: If duplicates are found
+    """
+    seen_workflows = {}
+    duplicates = []
+
+    for idx, skill in enumerate(skills):
+        workflow = skill.get("workflow")
+        if workflow in seen_workflows:
+            duplicates.append(
+                f"Skill '{workflow}' defined at indexes {seen_workflows[workflow]} and {idx} "
+                "(consider merging or renaming)"
+            )
+        else:
+            seen_workflows[workflow] = idx
+
+    if duplicates:
+        raise SkillDuplicateError("Duplicate skill workflows found:\n  " + "\n  ".join(duplicates))
+
+
+def validate_command_syntax(cmd: str, context: str) -> None:
+    """
+    Validate basic command syntax.
+
+    Args:
+        cmd: The command string to validate
+        context: Description of where the command appears (for error messages)
+
+    Raises:
+        SkillValidationError: If syntax is invalid
+    """
+    if not cmd or not cmd.strip():
+        raise SkillValidationError(f"{context}: Command is empty")
+
+    # Check for common issues
+    if cmd.count('"') % 2 != 0:
+        raise SkillValidationError(f"{context}: Unmatched double quotes in command: {cmd}")
+
+    if cmd.count("'") % 2 != 0:
+        raise SkillValidationError(f"{context}: Unmatched single quotes in command: {cmd}")
+
+    # Warn if command appears incomplete
+    if cmd.endswith(("|", "\\", "&&", "||")):
+        print(
+            f"WARNING: {context}: Command appears incomplete (ends with pipe/backslash/operator): {cmd}",
+            file=sys.stderr,
+        )
+
+
 def parse_rst_file(content: str) -> list[dict[str, str]]:
     """
     Parse RST content and extract all agent-skill directives.
@@ -111,6 +230,11 @@ def extract_all_skills() -> list[dict[str, str]]:
     Scan all contributing-docs/*.rst files and extract agent skills.
 
     Returns a list of all skill dicts found.
+
+    Raises:
+        SystemExit: If contributing-docs directory doesn't exist
+        SkillValidationError: If any skill fails validation
+        SkillDuplicateError: If duplicate skills are found
     """
     if not CONTRIBUTING_DOCS_DIR.exists():
         print(
@@ -127,6 +251,24 @@ def extract_all_skills() -> list[dict[str, str]]:
         for skill in skills:
             skill["source_file"] = str(rst_file)
             all_skills.append(skill)
+
+    # Validate all extracted skills
+    for idx, skill in enumerate(all_skills):
+        try:
+            validate_skill(skill, idx)
+            # Validate command syntax
+            validate_command_syntax(skill.get("host", ""), f"Skill {idx} ({skill.get('workflow')}): host command")
+            validate_command_syntax(skill.get("breeze", ""), f"Skill {idx} ({skill.get('workflow')}): breeze command")
+        except SkillValidationError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # Check for duplicates
+    try:
+        validate_skill_uniqueness(all_skills)
+    except SkillDuplicateError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     return all_skills
 

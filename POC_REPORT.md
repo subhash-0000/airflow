@@ -339,7 +339,6 @@ $ python3 -m pytest scripts/ci/prek/test_breeze_agent_skills.py -v
 
 **Files:**
 - `contributing-docs/agent_skills/DX_REPORT.md` — Failure mode analysis
-- `contributing-docs/agent_skills/AGENT_DEMO.md` — Demo agent documentation
 - `POC_REPORT.md` — This report
 
 **Key findings from DX_REPORT.md:**
@@ -466,7 +465,6 @@ airflow/
 │   ├── 08_static_code_checks.rst          # Skills: static-checks
 │   └── agent_skills/
 │       ├── DX_REPORT.md                   # Failure mode analysis
-│       └── AGENT_DEMO.md                  # 🆕 Demo agent documentation
 ├── .pre-commit-config.yaml                # Hook wired (line 942-951)
 └── POC_REPORT.md                          # This report
 ```

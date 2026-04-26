@@ -1,0 +1,196 @@
+{
+  "$schema": "breeze-agent-skills/decision-rules/v1",
+  "description": "Formalized decision rules and context detection priorities for Apache Airflow agent skills. These rules guide agent decision-making and can be audited/versioned.",
+  "last_updated": "2026-04-26",
+  "context_detection": {
+    "description": "Priority chain for detecting execution context. Agents check in order.",
+    "priority": [
+      {
+        "order": 1,
+        "method": "environment_variable",
+        "variable": "AIRFLOW_HOME",
+        "description": "User has explicitly set AIRFLOW_HOME environment variable",
+        "implies": "User wants to work with this Airflow instance"
+      },
+      {
+        "order": 2,
+        "method": "file_marker",
+        "path": "/.dockerenv",
+        "description": "File exists (Docker container)",
+        "implies": "Running inside Docker — use breeze commands"
+      },
+      {
+        "order": 3,
+        "method": "directory_marker",
+        "path": "/opt/airflow",
+        "description": "Directory exists (Breeze container path)",
+        "implies": "Running inside Airflow development container"
+      },
+      {
+        "order": 4,
+        "method": "default",
+        "description": "No markers detected",
+        "implies": "Assume host environment — use native tools"
+      }
+    ]
+  },
+  "execution_decision_tree": {
+    "description": "Decision logic for choosing between host and Breeze execution",
+    "rules": [
+      {
+        "id": "prefer-native",
+        "title": "Prefer native execution for speed",
+        "condition": "Quick static checks, linting, formatting",
+        "action": "Use `uv run --project <PROJECT>` on host",
+        "rationale": "Native execution is 3-5x faster, better IDE integration"
+      },
+      {
+        "id": "use-breeze-if-missing-deps",
+        "title": "Fall back to Breeze if native fails with dependency error",
+        "condition": "Command fails with 'missing system dependencies' or similar",
+        "action": "Retry with `breeze run <command>`",
+        "rationale": "Breeze has all dependencies pre-installed; avoids host pollution"
+      },
+      {
+        "id": "use-breeze-for-container-tests",
+        "title": "Use Breeze for container-specific tests",
+        "condition": "Tests require Kubernetes, Docker, or container orchestration",
+        "action": "Use `breeze testing <test_group>`",
+        "rationale": "These tests require Docker daemon and K8s cluster"
+      },
+      {
+        "id": "error-driven-fallback",
+        "title": "Never try to predict failure — react to actual errors",
+        "condition": "Always",
+        "action": "Start with fast path; if it fails with system dependency error, retry with fallback",
+        "rationale": "Prevents false positives and unnecessary Breeze overhead"
+      }
+    ]
+  },
+  "fallback_error_patterns": {
+    "description": "Error patterns that trigger fallback to Breeze when detected",
+    "patterns": [
+      "mysqlclient requires MySQL C libraries",
+      "mysql_config not found",
+      "libmysqlclient",
+      "libpq.so not found",
+      "libpq.dylib not found",
+      "postgresql",
+      "psycopg2",
+      "system dependency",
+      "shared library",
+      ".so not found",
+      ".dylib not found",
+      "DLL load failed",
+      "npm not found",
+      "node not found"
+    ]
+  },
+  "command_ordering": {
+    "description": "Order of command execution matters for agent accuracy. Rules should come BEFORE examples.",
+    "rule_ordering": [
+      {
+        "order": 1,
+        "type": "decision_rules",
+        "description": "When to use which execution path",
+        "example": "Use uv for fast path; use Breeze if dependencies missing"
+      },
+      {
+        "order": 2,
+        "type": "architecture_boundaries",
+        "description": "System architecture constraints",
+        "example": "Scheduler never runs user code; workers never access metadata DB"
+      },
+      {
+        "order": 3,
+        "type": "coding_standards",
+        "description": "Code quality requirements",
+        "example": "Always format with ruff; use dedicated exception types"
+      },
+      {
+        "order": 4,
+        "type": "testing_standards",
+        "description": "Test requirements",
+        "example": "Cover success, failure, and edge cases"
+      },
+      {
+        "order": 5,
+        "type": "workflow_examples",
+        "description": "Concrete command examples",
+        "example": "Run a test: uv run --project <PROJECT> pytest path/to/test.py::TestClass::test_method -xvs"
+      }
+    ]
+  },
+  "skill_extraction": {
+    "description": "Rules for extracting and validating skills from contributing-docs",
+    "source_of_truth": "contributing-docs/*.rst files",
+    "extraction_mechanism": "RST .. agent-skill:: directives",
+    "validation": {
+      "required_fields": ["workflow", "host", "breeze"],
+      "optional_fields": ["fallback_condition", "tier", "tier_reason", "reference"],
+      "constraints": [
+        "Skill ID must be unique across all skills",
+        "Host and breeze commands must not be identical (indicates copy-paste error)",
+        "Commands must have valid shell syntax (balanced quotes and braces)",
+        "Each skill must be < 200 tokens (approximately 150 words)"
+      ],
+      "error_handling": [
+        "Raise SkillValidationError if required field is missing",
+        "Raise SkillDuplicateError if workflow ID is duplicated",
+        "Print warning if command syntax is suspicious",
+        "Print warning if skill size exceeds 150 tokens"
+      ]
+    }
+  },
+  "agent_priming": {
+    "description": "How to structure documentation for optimal agent comprehension",
+    "guidelines": [
+      {
+        "guideline": "Rules first, examples last",
+        "rationale": "Agents perform better when decision logic appears before concrete examples",
+        "example": "AGENTS.md should list '1. Use uv for fast path' BEFORE showing specific uv commands"
+      },
+      {
+        "guideline": "Concise skill definitions",
+        "rationale": "Agent context windows are limited; skills should summarize, not duplicate docs",
+        "threshold": "Skill should be < 40% of source documentation section size"
+      },
+      {
+        "guideline": "Decision trees over prose",
+        "rationale": "Agents handle structured conditionals better than long descriptions",
+        "format": "Use ASCII art decision trees or bullet-lists with if/then structure"
+      },
+      {
+        "guideline": "Progressive disclosure",
+        "rationale": "Quick reference (AGENTS.md) → detailed rules (CONSTITUTION.md) → implementation",
+        "benefit": "Agents can find what they need without wading through all details"
+      }
+    ]
+  },
+  "ci_validation": {
+    "description": "Automated checks that ensure skills remain current and valid",
+    "checks": [
+      {
+        "name": "docs_currency",
+        "schedule": "Monthly (1st of each month)",
+        "what": "Test that all skill commands are syntactically valid and reference valid executables",
+        "where": "scripts/ci/prek/validate_docs_currency.py",
+        "failure_mode": "Fails CI if any skill command is invalid"
+      },
+      {
+        "name": "skill_conciseness",
+        "schedule": "Per-commit (pre-submit check)",
+        "what": "Verify each skill is concise relative to source documentation",
+        "where": "scripts/tests/test_skill_conciseness.py",
+        "failure_mode": "Fails if any skill exceeds 200 tokens or average exceeds 150 tokens"
+      },
+      {
+        "name": "skill_extraction",
+        "schedule": "Per-commit (pre-commit hook)",
+        "what": "Detect drift between committed skills.json and contributing-docs/*.rst",
+        "where": "scripts/ci/prek/extract_agent_skills.py --check",
+        "failure_mode": "Fails if skills.json is out of sync with source documentation"
+      }
+    ]
+  }
+}
